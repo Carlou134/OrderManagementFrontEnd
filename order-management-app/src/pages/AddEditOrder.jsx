@@ -1,15 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+
 import { 
   getProducts, 
   listOrderById, 
   createOrder, 
-  updateOrder 
+  updateOrder, 
+  listProductById
 } from '../services/api';
 import ProductModal from '../components/ProductModal';
 import Swal from 'sweetalert2';
 
 function AddEditOrder() {
+  const [orderFromApi, setOrderFromApi] = useState(null);
   const { id } = useParams();
   const navigate = useNavigate();
   const isEditMode = Boolean(id);
@@ -34,10 +37,18 @@ function AddEditOrder() {
 
         setOrderNumber(data.orderNumber);
         setOrderDate(formatDateForInput(data.orderDate));
+        const mappedProducts = data.orderProducts.map(p => ({
+          productId: p.productId,
+          quantity: p.quantity,
+          unitPrice: Number(p.unitPrice),
+          totalPrice: Number(p.totalPrice),
+          productName: ''
+        }));
 
-        if (data.products && data.products.length > 0) {
-          setOrderProducts(data.products);
-        }
+        await enrichProductsWithName(mappedProducts);
+
+
+        setOrderFromApi(data);
       } catch (error) {
         console.error('Error al cargar orden:', error);
         Swal.fire('Error', 'No se pudo cargar la orden', 'error');
@@ -56,6 +67,36 @@ function AddEditOrder() {
         setOrderDate(getCurrentDate());
       }
     }, [isEditMode, loadOrderData]);
+
+
+    useEffect(() => {
+      if (!orderFromApi?.OrderProducts) return;
+
+      const mappedProducts = orderFromApi.OrderProducts.map(p => ({
+        productId: p.ProductId,
+        productName: '', 
+        unitPrice: Number(p.UnitPrice),
+        quantity: p.Quantity,
+        totalPrice: Number(p.TotalPrice)
+      }));
+
+      setOrderProducts(mappedProducts);
+    }, [orderFromApi]);
+
+  const enrichProductsWithName = async (products) => {
+  const enriched = await Promise.all(
+    products.map(async (p) => {
+      const product = await listProductById(p.productId);
+
+      return {
+        ...p,
+        productName: product.name
+      };
+    })
+  );
+
+  setOrderProducts(enriched);
+};
 
 
   const loadAvailableProducts = async () => {

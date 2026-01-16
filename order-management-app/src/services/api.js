@@ -28,7 +28,7 @@ export const createOrder = async (order) => {
 
 export const updateOrder = async(id, order) => {
     try{
-        const response = await axios.update(`${ApiUrl}/orders/update/${id}`, order);
+        const response = await axios.put(`${ApiUrl}/orders/update/${id}`, order);
         return response.data;
     }
     catch(error){
