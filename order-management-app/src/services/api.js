@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const ApiUrl = "https://localhost:7197/api";
+const ApiUrl = "https://order-management-api-are6c9d2a9ace0ht.canadacentral-01.azurewebsites.net/api";
 
 //Orders
 
