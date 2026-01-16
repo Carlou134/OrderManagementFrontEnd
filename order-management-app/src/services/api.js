@@ -59,16 +59,17 @@ export const listOrderById = async(id) => {
     }
 }
 
-export const ChangeOrderStatus = async(status, id) => {
-    try{
-        const response = await axios.post(`${ApiUrl}/orders/changestatus/${id}`, status);
-        return response.data;
+export const ChangeOrderStatus = async (status, id) => {
+  return axios.post(
+    `${ApiUrl}/orders/changestatus/${id}`,
+    { status },
+    {
+      headers: {
+        'Content-Type': 'application/json'
+      }
     }
-    catch(error){
-        console.error("Error: ", error);
-        throw error;
-    }
-}
+  );
+};
 
 //Products
 
