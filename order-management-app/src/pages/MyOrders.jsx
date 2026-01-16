@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getOrders, deleteOrder } from '../services/api';
 import Swal from 'sweetalert2';
@@ -7,24 +7,28 @@ function MyOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const hasFetched = useRef(false);
+
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadOrders();
+    if (!hasFetched.current) {
+      hasFetched.current = true;
+      loadOrders();
+    }
   }, []);
 
   const loadOrders = async () => {
     try {
       setLoading(true);
       const data = await getOrders();
-      console.log('Órdenes recibidas:', data);
       setOrders(data);
     } catch (error) {
       console.error('Error al cargar órdenes:', error);
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: 'No se pudieron cargar las órdenes. Verifica que tu API esté corriendo.'
+        text: 'No se pudieron cargar las órdenes.'
       });
     } finally {
       setLoading(false);
@@ -76,14 +80,16 @@ function MyOrders() {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', {
+    if (isNaN(date.getTime())) return 'Fecha inválida';
+    
+    return date.toLocaleDateString('es-PE', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
     });
   };
-
 
   const formatPrice = (price) => {
     return `$${parseFloat(price).toFixed(2)}`;
@@ -154,11 +160,9 @@ function MyOrders() {
                       <td>
                         <strong>{order.orderNumber}</strong>
                       </td>
-                      <td>{formatDate(order.date)}</td>
+                      <td>{formatDate(order.orderDate)}</td>
                       <td className="text-center">
-                        <span className="badge bg-secondary">
-                          {order.productCount}
-                        </span>
+                        {order.numberProducts}
                       </td>
                       <td>
                         <strong className="text-success">
