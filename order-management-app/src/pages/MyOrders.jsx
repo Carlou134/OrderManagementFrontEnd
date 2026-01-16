@@ -137,7 +137,7 @@ function MyOrders() {
             showConfirmButton: false
           });
 
-          loadOrders(); // refresca tabla
+          loadOrders();
         } catch (error) {
           console.error('Error changing status:', error);
           Swal.fire({
