@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const ApiUrl = "https://order-management-api-are6c9d2a9ace0ht.canadacentral-01.azurewebsites.net/api";
+const ApiUrl = import.meta.env.VITE_API_URL;
 
 //Orders
 
