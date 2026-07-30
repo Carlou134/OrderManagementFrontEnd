@@ -9,19 +9,19 @@ function ProductModal({ show, onClose, onSave, products, editingProduct }) {
     e.preventDefault();
 
     if (!selectedProductId) {
-      Swal.fire('Error', 'Selecciona un producto', 'error');
+      Swal.fire('Error', 'Select a product', 'error');
       return;
     }
 
     if (quantity <= 0) {
-      Swal.fire('Error', 'La cantidad debe ser mayor a 0', 'error');
+      Swal.fire('Error', 'Quantity must be greater than 0', 'error');
       return;
     }
 
     const product = products.find(p => p.id === parseInt(selectedProductId));
 
     if (!product) {
-      Swal.fire('Error', 'Producto no encontrado', 'error');
+      Swal.fire('Error', 'Product not found', 'error');
       return;
     }
 

@@ -50,8 +50,8 @@ function AddEditOrder() {
 
         setOrderFromApi(data);
       } catch (error) {
-        console.error('Error al cargar orden:', error);
-        Swal.fire('Error', 'No se pudo cargar la orden', 'error');
+        console.error('Error loading order:', error);
+        Swal.fire('Error', 'Could not load the order', 'error');
         navigate('/my-orders');
       } finally {
         setLoading(false);
@@ -104,8 +104,8 @@ function AddEditOrder() {
       const data = await getProducts();
       setAvailableProducts(data);
     } catch (error) {
-      console.error('Error al cargar productos:', error);
-      Swal.fire('Error', 'No se pudieron cargar los productos', 'error');
+      console.error('Error loading products:', error);
+      Swal.fire('Error', 'Could not load products', 'error');
     }
   };
 
@@ -150,7 +150,7 @@ function AddEditOrder() {
       const exists = orderProducts.find(p => p.productId === product.productId);
       
       if (exists) {
-        Swal.fire('Advertencia', 'Este producto ya está en la orden. Edítalo en la tabla.', 'warning');
+        Swal.fire('Warning', 'This product is already in the order. Edit it in the table.', 'warning');
         return;
       }
       
@@ -160,14 +160,14 @@ function AddEditOrder() {
 
   const handleRemoveProduct = (index) => {
     Swal.fire({
-      title: '¿Estás seguro?',
-      text: 'Se eliminará este producto de la orden',
+      title: 'Are you sure?',
+      text: 'This will remove this product from the order',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#dc3545',
       cancelButtonColor: '#6c757d',
-      confirmButtonText: 'Sí, eliminar',
-      cancelButtonText: 'Cancelar'
+      confirmButtonText: 'Yes, delete',
+      cancelButtonText: 'Cancel'
     }).then((result) => {
       if (result.isConfirmed) {
         const updated = orderProducts.filter((_, i) => i !== index);
@@ -179,9 +179,9 @@ function AddEditOrder() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validaciones
+    // Validations
     if (orderProducts.length === 0) {
-      Swal.fire('Error', 'Debes agregar al menos un producto', 'error');
+      Swal.fire('Error', 'You must add at least one product', 'error');
       return;
     }
 
@@ -198,16 +198,16 @@ function AddEditOrder() {
 
       if (isEditMode) {
         await updateOrder(id, orderData);
-        Swal.fire('Éxito', 'Orden actualizada correctamente', 'success');
+        Swal.fire('Success', 'Order updated successfully', 'success');
       } else {
         await createOrder(orderData);
-        Swal.fire('Éxito', 'Orden creada correctamente', 'success');
+        Swal.fire('Success', 'Order created successfully', 'success');
       }
 
       navigate('/my-orders');
     } catch (error) {
-      console.error('Error al guardar orden:', error);
-      Swal.fire('Error', 'No se pudo guardar la orden', 'error');
+      console.error('Error saving order:', error);
+      Swal.fire('Error', 'Could not save the order', 'error');
     } finally {
       setLoading(false);
     }
@@ -217,7 +217,7 @@ function AddEditOrder() {
     return (
       <div className="text-center mt-5">
         <div className="spinner-border" role="status">
-          <span className="visually-hidden">Cargando...</span>
+          <span className="visually-hidden">Loading...</span>
         </div>
       </div>
     );
@@ -305,7 +305,7 @@ function AddEditOrder() {
               <div className="card-body">
                 {orderProducts.length === 0 ? (
                   <div className="alert alert-info">
-                    No hay productos en esta orden. Haz clic en "Add Product" para agregar.
+                    No products in this order yet. Click "Add Product" to add one.
                   </div>
                 ) : (
                   <div className="table-responsive">
