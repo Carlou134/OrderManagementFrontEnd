@@ -14,6 +14,10 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
     /* Incremental JS -> TS migration */
     "allowJs": true,
     "checkJs": false,
