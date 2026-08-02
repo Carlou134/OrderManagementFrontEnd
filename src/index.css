@@ -1,51 +1,54 @@
-@layer bootstrap, theme, base, components, utilities;
-@import "bootstrap/dist/css/bootstrap.min.css" layer(bootstrap);
-
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
+@import "@fontsource-variable/archivo";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Modernist — one accent (red-orange), zero corner radius, strong dividers. */
+  --background: #f3f2f2;
+  --foreground: #201e1d;
+  --card: #ffffff;
+  --card-foreground: #201e1d;
+  --popover: #ffffff;
+  --popover-foreground: #201e1d;
+  --primary: #ec3013;
+  --primary-foreground: #ffffff;
+  --secondary: #eae9e9;
+  --secondary-foreground: #201e1d;
+  --muted: #eae7e7;
+  --muted-foreground: #605d5d;
+  --accent: #eae9e9;
+  --accent-foreground: #201e1d;
+  --destructive: #ae1800;
+  --destructive-foreground: #ffffff;
+  --border: color-mix(in srgb, #201e1d 40%, transparent);
+  --input: color-mix(in srgb, #201e1d 40%, transparent);
+  --ring: #ec3013;
+  --chart-1: #ec3013;
+  --chart-2: #605d5d;
+  --chart-3: #9b9797;
+  --chart-4: #bab6b6;
+  --chart-5: #444141;
+  --radius: 0rem;
+  --sidebar: #eae9e9;
+  --sidebar-foreground: #201e1d;
+  --sidebar-primary: #ec3013;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eae7e7;
+  --sidebar-accent-foreground: #201e1d;
+  --sidebar-border: color-mix(in srgb, #201e1d 40%, transparent);
+  --sidebar-ring: #ec3013;
+
+  /* Deliberate exception to the mono-accent rule — only used for the Completed status. */
+  --success: #e6f2e9;
+  --success-foreground: #1f5c33;
 }
 
 @theme inline {
   --font-heading: var(--font-sans);
-  --font-sans: 'Geist Variable', sans-serif;
+  --font-sans: 'Archivo Variable', system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -62,6 +65,7 @@
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
@@ -77,6 +81,8 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -87,37 +93,41 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #171513;
+  --foreground: #f3f2f2;
+  --card: #201e1d;
+  --card-foreground: #f3f2f2;
+  --popover: #201e1d;
+  --popover-foreground: #f3f2f2;
+  --primary: #ff563c;
+  --primary-foreground: #201e1d;
+  --secondary: #2d2b2b;
+  --secondary-foreground: #f3f2f2;
+  --muted: #2d2b2b;
+  --muted-foreground: #9b9797;
+  --accent: #2d2b2b;
+  --accent-foreground: #f3f2f2;
+  --destructive: #ff9783;
+  --destructive-foreground: #201e1d;
+  --border: color-mix(in srgb, #f3f2f2 25%, transparent);
+  --input: color-mix(in srgb, #f3f2f2 25%, transparent);
+  --ring: #ff563c;
+  --chart-1: #ff563c;
+  --chart-2: #9b9797;
+  --chart-3: #7d7979;
+  --chart-4: #605d5d;
+  --chart-5: #bab6b6;
+  --sidebar: #201e1d;
+  --sidebar-foreground: #f3f2f2;
+  --sidebar-primary: #ff563c;
+  --sidebar-primary-foreground: #201e1d;
+  --sidebar-accent: #2d2b2b;
+  --sidebar-accent-foreground: #f3f2f2;
+  --sidebar-border: color-mix(in srgb, #f3f2f2 25%, transparent);
+  --sidebar-ring: #ff563c;
+
+  --success: #17301f;
+  --success-foreground: #4fd399;
 }
 
 @layer base {
@@ -129,5 +139,13 @@
   }
   html {
     @apply font-sans;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-bold tracking-tight;
   }
 }

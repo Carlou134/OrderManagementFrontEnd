@@ -122,11 +122,11 @@ function Products() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold tracking-tight">Products</h1>
+      <div className="mb-5">
+        <h2>Products</h2>
       </div>
 
-      <div className="rounded-xl border">
+      <div className="border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -147,21 +147,29 @@ function Products() {
             ) : (
               products.map((product) => (
                 <TableRow key={product.id}>
-                  <TableCell>{product.id}</TableCell>
+                  <TableCell className="text-muted-foreground">{product.id}</TableCell>
                   <TableCell className="font-semibold">{product.name}</TableCell>
                   <TableCell>{formatPrice(product.unitPrice)}</TableCell>
                   <TableCell className="text-center">
-                    <div className="flex justify-center gap-2">
-                      <Button size="sm" variant="outline" onClick={() => openEditDialog(product)}>
+                    <div className="flex justify-center gap-1">
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        title="Update"
+                        onClick={() => openEditDialog(product)}
+                      >
                         <Pencil className="size-4" />
-                        Update
                       </Button>
 
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="destructive">
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            title="Delete"
+                            className="text-destructive hover:text-destructive"
+                          >
                             <Trash2 className="size-4" />
-                            Delete
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>

@@ -1,50 +1,52 @@
 import { Link } from 'react-router-dom'
-import { ListOrdered, PlusCircle } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from '@/components/ui/card'
+import { ClipboardList, PackagePlus, ArrowRight } from 'lucide-react'
+
+const links = [
+  {
+    to: '/my-orders',
+    icon: ClipboardList,
+    title: 'My Orders',
+    description: 'Browse every order, update status, or jump into edit.',
+    cta: 'View orders',
+  },
+  {
+    to: '/add-order',
+    icon: PackagePlus,
+    title: 'Add Order',
+    description: 'Start a new purchase order and add products to it.',
+    cta: 'New order',
+  },
+]
 
 function Home() {
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold tracking-tight">Order Management</h1>
-        <p className="mt-2 text-muted-foreground">
-          Manage your orders and their products from one place.
+    <div className="mx-auto max-w-5xl border border-border bg-card">
+      <div className="p-12">
+        <h1 className="text-4xl">Order Management</h1>
+        <p className="mt-3 max-w-xl text-base text-muted-foreground">
+          Track purchase orders and the product catalog that feeds them — create an order, count
+          and price it automatically, and move it from Pending to Completed.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <ListOrdered className="size-6" />
-            <CardTitle>My Orders</CardTitle>
-            <CardDescription>View, edit and delete existing orders.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild className="w-full">
-              <Link to="/my-orders">Go to My Orders</Link>
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="border-t-2 border-border" />
 
-        <Card>
-          <CardHeader>
-            <PlusCircle className="size-6" />
-            <CardTitle>Add Order</CardTitle>
-            <CardDescription>Create a new order and add products to it.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild className="w-full">
-              <Link to="/add-order">Create order</Link>
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="grid sm:grid-cols-2">
+        {links.map(({ to, icon: Icon, title, description, cta }, i) => (
+          <Link
+            key={to}
+            to={to}
+            className={`flex flex-col gap-3 p-8 hover:bg-secondary/40 ${i === 0 ? 'border-b border-border sm:border-r sm:border-b-0' : ''}`}
+          >
+            <Icon className="size-7 text-primary" strokeWidth={1.6} />
+            <h3>{title}</h3>
+            <p className="text-sm text-muted-foreground">{description}</p>
+            <span className="mt-auto flex items-center gap-1.5 font-heading text-sm font-semibold text-primary">
+              {cta}
+              <ArrowRight className="size-3.5" />
+            </span>
+          </Link>
+        ))}
       </div>
     </div>
   )

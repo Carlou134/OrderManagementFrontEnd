@@ -16,7 +16,7 @@ function App() {
         <Navbar />
         <Toaster richColors position="top-right" />
 
-        <div className="container-fluid mt-4">
+        <div className="px-4 py-8">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/my-orders" element={<MyOrders />} />

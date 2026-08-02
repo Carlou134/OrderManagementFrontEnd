@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Inbox, Loader2, Pencil, RefreshCcw, Trash2 } from 'lucide-react'
+import { Inbox, Loader2, Pencil, Plus, RefreshCcw, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -50,13 +50,13 @@ const STATUS_OPTIONS = [
 function getStatusInfo(status: number) {
   switch (status) {
     case 0:
-      return { text: 'Pending', className: 'bg-secondary text-secondary-foreground' }
+      return { text: 'Pending', className: 'bg-[#f8f4f4] text-[#444141]', dot: '#7d7979' }
     case 1:
-      return { text: 'In Progress', className: 'bg-amber-500 text-white' }
+      return { text: 'In Progress', className: 'bg-[#fff2ef] text-[#7c1405]', dot: '#ae1800' }
     case 2:
-      return { text: 'Completed', className: 'bg-emerald-600 text-white' }
+      return { text: 'Completed', className: 'bg-success text-success-foreground', dot: '#2f7d47' }
     default:
-      return { text: 'Unknown', className: 'bg-muted text-muted-foreground' }
+      return { text: 'Unknown', className: 'bg-muted text-muted-foreground', dot: '#9b9797' }
   }
 }
 
@@ -153,12 +153,15 @@ function MyOrders() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">My Orders</h1>
-        <Button onClick={() => navigate('/add-order')}>Add New Order</Button>
+      <div className="mb-5 flex items-baseline justify-between">
+        <h2>My Orders</h2>
+        <Button onClick={() => navigate('/add-order')}>
+          <Plus className="size-4" />
+          New Order
+        </Button>
       </div>
 
-      <div className="rounded-xl border">
+      <div className="border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -178,7 +181,7 @@ function MyOrders() {
                   <Inbox className="mx-auto size-10 text-muted-foreground" />
                   <p className="mt-3 mb-0 text-muted-foreground">No orders found</p>
                   <p className="text-sm text-muted-foreground">
-                    Click &quot;Add New Order&quot; to create one
+                    Click &quot;New Order&quot; to create one
                   </p>
                 </TableCell>
               </TableRow>
@@ -187,37 +190,49 @@ function MyOrders() {
                 const statusInfo = getStatusInfo(order.status)
                 return (
                   <TableRow key={order.id}>
-                    <TableCell>{order.id}</TableCell>
+                    <TableCell className="text-muted-foreground">{order.id}</TableCell>
                     <TableCell className="font-semibold">{order.orderNumber}</TableCell>
                     <TableCell>{formatDate(order.orderDate)}</TableCell>
                     <TableCell className="text-center">{order.numberProducts}</TableCell>
-                    <TableCell className="font-semibold text-emerald-700 dark:text-emerald-400">
-                      {formatPrice(order.finalPrice)}
-                    </TableCell>
+                    <TableCell className="font-semibold">{formatPrice(order.finalPrice)}</TableCell>
                     <TableCell className="text-center">
-                      <Badge className={statusInfo.className}>{statusInfo.text}</Badge>
+                      <Badge className={statusInfo.className}>
+                        <span
+                          className="size-1.5 rounded-full"
+                          style={{ backgroundColor: statusInfo.dot }}
+                        />
+                        {statusInfo.text}
+                      </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex justify-center gap-2">
+                      <div className="flex justify-center gap-1">
                         <Button
-                          size="sm"
-                          variant="outline"
+                          size="icon-sm"
+                          variant="ghost"
+                          title="Edit"
                           onClick={() => navigate(`/add-order/${order.id}`)}
                         >
                           <Pencil className="size-4" />
-                          Edit
                         </Button>
 
-                        <Button size="sm" variant="outline" onClick={() => openStatusDialog(order)}>
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          title="Change status"
+                          onClick={() => openStatusDialog(order)}
+                        >
                           <RefreshCcw className="size-4" />
-                          Status
                         </Button>
 
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button size="sm" variant="destructive">
+                            <Button
+                              size="icon-sm"
+                              variant="ghost"
+                              title="Delete"
+                              className="text-destructive hover:text-destructive"
+                            >
                               <Trash2 className="size-4" />
-                              Delete
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
