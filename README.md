@@ -28,7 +28,7 @@ Built as a technical test for a job interview process: given a spec with two req
 
 - **Layered backend** (Domain / Application / Infrastructure / Api) with repositories + AutoMapper for entity-to-DTO mapping, and FluentValidation for input business rules.
 - **Real pagination** on list endpoints (`PagedResult<T>` with `page`, `pageSize`, `totalCount`), consumed from the frontend without leaking pagination details to the rest of the app.
-- **Typed service layer on the frontend** (`src/services/api.ts`) separating HTTP calls from the rest of the components, with React Query for server-state caching instead of manual `useState` + `useEffect`.
+- **Typed service layer on the frontend** (`src/services/ordersApi.ts`, `src/services/productsApi.ts`) separating HTTP calls from the rest of the components, with dedicated React Query hooks (`src/hooks/`) for server-state caching instead of manual `useState` + `useEffect`.
 - **Custom design system** ("Modernist") applied as CSS tokens on top of shadcn/ui — a single accent color, zero border radius, Archivo typography — to avoid relying on the component library's generic default look.
 - Backend unit tests with xUnit + Moq.
 
@@ -40,6 +40,12 @@ Built as a technical test for a job interview process: given a spec with two req
 - **Problem:** migrating from Bootstrap to Tailwind CSS v4 module by module, without being able to drop Bootstrap all at once because parts of the app still depended on it. Both frameworks define global resets that stepped on each other. **Solution:** Bootstrap was isolated into its own lower-priority layer using CSS Cascade Layers (`@layer bootstrap, theme, base, components, utilities`). **Why:** it allowed migrating one component at a time without visually breaking either the ones already migrated or the ones still pending.
 - **Problem:** the repo had been saved with the entire project nested inside a subfolder, and the `.env` file with the production URL had been committed. **Solution:** the structure was flattened while preserving git history (`git mv`), the `.env` was untracked, and the project was migrated to pnpm + TypeScript incrementally (`allowJs`) without blocking ongoing development. **Why:** clean up the foundation before adding more functionality, instead of piling up debt on top of a broken structure.
 - **Problem:** the spec required that the modal for editing a product already in an order only allow changing the quantity, not the product itself. **Solution:** the product `Select` is automatically disabled whenever the modal opens in edit mode. **Why:** it prevents a quantity edit from accidentally swapping out the line's product.
+
+---
+
+## 📚 Docs
+
+- [Technical documentation](docs/technical.md) — folder structure, patterns, and the reasoning behind the main technical decisions.
 
 ---
 
@@ -60,5 +66,3 @@ pnpm dev
 ## 🔗 Related links
 
 - Backend: [github.com/Carlou134/OrderManagementBackend](https://github.com/Carlou134/OrderManagementBackend)
-
-- Frontend: [github.com/Carlou134/OrderManagementFrontEnd](https://github.com/Carlou134/OrderManagementFrontEnd)
