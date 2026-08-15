@@ -1,8 +1,15 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
-import { Inbox, Loader2, Pencil, Plus, RefreshCcw, Trash2 } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Inbox,
+  Loader2,
+  Pencil,
+  Plus,
+  RefreshCcw,
+  Trash2,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -39,7 +46,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { getOrders, deleteOrder, ChangeOrderStatus, type OrderListItem } from '@/services/api'
+import { useOrders, useDeleteOrder, useChangeOrderStatus } from '@/hooks/useOrders'
+import type { Order } from '@/types/order'
 
 const STATUS_OPTIONS = [
   { value: '0', label: 'Pending' },
@@ -78,53 +86,29 @@ function formatPrice(price: number) {
 
 function MyOrders() {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const [statusTarget, setStatusTarget] = useState<OrderListItem | null>(null)
+  const [page, setPage] = useState(1)
+  const [statusTarget, setStatusTarget] = useState<Order | null>(null)
   const [newStatus, setNewStatus] = useState('0')
 
-  const {
-    data: orders = [],
-    isLoading,
-    isError,
-    refetch,
-  } = useQuery({
-    queryKey: ['orders'],
-    queryFn: getOrders,
-  })
+  const { data, isLoading, isError, refetch } = useOrders({ page })
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteOrder,
-    onSuccess: () => {
-      toast.success('Order deleted successfully')
-      queryClient.invalidateQueries({ queryKey: ['orders'] })
-    },
-    onError: (error) => {
-      console.error('Error deleting order:', error)
-      toast.error('Could not delete order')
-    },
-  })
+  const orders = data?.items ?? []
+  const totalPages = data?.totalPages ?? 1
 
-  const statusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: number; status: number }) => ChangeOrderStatus(status, id),
-    onSuccess: () => {
-      toast.success('Order status updated')
-      setStatusTarget(null)
-      queryClient.invalidateQueries({ queryKey: ['orders'] })
-    },
-    onError: (error) => {
-      console.error('Error changing status:', error)
-      toast.error('Could not update order status')
-    },
-  })
+  const deleteMutation = useDeleteOrder()
+  const statusMutation = useChangeOrderStatus()
 
-  const openStatusDialog = (order: OrderListItem) => {
+  const openStatusDialog = (order: Order) => {
     setStatusTarget(order)
     setNewStatus(String(order.status))
   }
 
   const handleConfirmStatusChange = () => {
     if (!statusTarget) return
-    statusMutation.mutate({ id: statusTarget.id, status: Number(newStatus) })
+    statusMutation.mutate(
+      { id: statusTarget.id, status: Number(newStatus) },
+      { onSuccess: () => setStatusTarget(null) }
+    )
   }
 
   if (isLoading) {
@@ -259,6 +243,30 @@ function MyOrders() {
             )}
           </TableBody>
         </Table>
+
+        <div className="flex items-center justify-between border-t border-border px-3 py-2">
+          <span className="text-xs text-muted-foreground">
+            Page {data?.page ?? page} of {totalPages} · {data?.totalCount ?? 0} orders
+          </span>
+          <div className="flex gap-1">
+            <Button
+              size="icon-sm"
+              variant="outline"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+            <Button
+              size="icon-sm"
+              variant="outline"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
+        </div>
       </div>
 
       <Dialog open={statusTarget !== null} onOpenChange={(open) => !open && setStatusTarget(null)}>

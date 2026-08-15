@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Loader2, Package, Pencil, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, Package, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -32,53 +31,35 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { getProducts, deleteProduct, updateProduct, type Product } from '@/services/api'
+import {
+  useProducts,
+  useCreateProduct,
+  useUpdateProduct,
+  useDeleteProduct,
+} from '@/hooks/useProducts'
+import type { Product } from '@/types/product'
 
 function formatPrice(price: number) {
   return `$${price.toFixed(2)}`
 }
 
 function Products() {
-  const queryClient = useQueryClient()
+  const [page, setPage] = useState(1)
   const [editTarget, setEditTarget] = useState<Product | null>(null)
   const [editName, setEditName] = useState('')
   const [editPrice, setEditPrice] = useState('')
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [createName, setCreateName] = useState('')
+  const [createPrice, setCreatePrice] = useState('')
 
-  const {
-    data: products = [],
-    isLoading,
-    isError,
-    refetch,
-  } = useQuery({
-    queryKey: ['products'],
-    queryFn: getProducts,
-  })
+  const { data, isLoading, isError, refetch } = useProducts({ page })
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteProduct,
-    onSuccess: () => {
-      toast.success('Product deleted successfully')
-      queryClient.invalidateQueries({ queryKey: ['products'] })
-    },
-    onError: (error) => {
-      console.error('Error deleting product:', error)
-      toast.error('Could not delete product')
-    },
-  })
+  const products = data?.items ?? []
+  const totalPages = data?.totalPages ?? 1
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, name, unitPrice }: { id: number; name: string; unitPrice: number }) =>
-      updateProduct(id, { name, unitPrice }),
-    onSuccess: () => {
-      toast.success('Product updated successfully')
-      setEditTarget(null)
-      queryClient.invalidateQueries({ queryKey: ['products'] })
-    },
-    onError: (error) => {
-      console.error('Error updating product:', error)
-      toast.error('Could not update product')
-    },
-  })
+  const deleteMutation = useDeleteProduct()
+  const updateMutation = useUpdateProduct()
+  const createMutation = useCreateProduct()
 
   const openEditDialog = (product: Product) => {
     setEditTarget(product)
@@ -93,7 +74,28 @@ function Products() {
       toast.error('Check the product name and price')
       return
     }
-    updateMutation.mutate({ id: editTarget.id, name: editName.trim(), unitPrice })
+    updateMutation.mutate(
+      { id: editTarget.id, name: editName.trim(), unitPrice },
+      { onSuccess: () => setEditTarget(null) }
+    )
+  }
+
+  const openCreateDialog = () => {
+    setCreateName('')
+    setCreatePrice('')
+    setShowCreateDialog(true)
+  }
+
+  const handleConfirmCreate = () => {
+    const unitPrice = Number(createPrice)
+    if (!createName.trim() || Number.isNaN(unitPrice) || unitPrice <= 0) {
+      toast.error('Check the product name and price')
+      return
+    }
+    createMutation.mutate(
+      { name: createName.trim(), unitPrice },
+      { onSuccess: () => setShowCreateDialog(false) }
+    )
   }
 
   if (isLoading) {
@@ -122,8 +124,12 @@ function Products() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="mb-5">
+      <div className="mb-5 flex items-baseline justify-between">
         <h2>Products</h2>
+        <Button onClick={openCreateDialog}>
+          <Plus className="size-4" />
+          New Product
+        </Button>
       </div>
 
       <div className="border border-border bg-card">
@@ -195,6 +201,30 @@ function Products() {
             )}
           </TableBody>
         </Table>
+
+        <div className="flex items-center justify-between border-t border-border px-3 py-2">
+          <span className="text-xs text-muted-foreground">
+            Page {data?.page ?? page} of {totalPages} · {data?.totalCount ?? 0} products
+          </span>
+          <div className="flex gap-1">
+            <Button
+              size="icon-sm"
+              variant="outline"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+            <Button
+              size="icon-sm"
+              variant="outline"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
+        </div>
       </div>
 
       <Dialog open={editTarget !== null} onOpenChange={(open) => !open && setEditTarget(null)}>
@@ -228,6 +258,46 @@ function Products() {
             </Button>
             <Button onClick={handleConfirmUpdate} disabled={updateMutation.isPending}>
               Update
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New Product</DialogTitle>
+            <DialogDescription>Set the name and price for the new product.</DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="create-product-name">Name</Label>
+              <Input
+                id="create-product-name"
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="create-product-price">Unit Price</Label>
+              <Input
+                id="create-product-price"
+                type="number"
+                min="0"
+                step="0.01"
+                value={createPrice}
+                onChange={(e) => setCreatePrice(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmCreate} disabled={createMutation.isPending}>
+              Create
             </Button>
           </DialogFooter>
         </DialogContent>

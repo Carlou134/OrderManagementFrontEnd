@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { Product } from '@/services/api'
+import type { Product } from '@/types/product'
 
 export interface OrderProductItem {
   productId: number

@@ -26,14 +26,9 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import ProductModal, { type OrderProductItem } from '@/components/ProductModal'
-import {
-  getProducts,
-  listOrderById,
-  createOrder,
-  updateOrder,
-  listProductById,
-  type Product,
-} from '@/services/api'
+import { listOrderById, createOrder, updateOrder } from '@/services/ordersApi'
+import { getProducts, listProductById } from '@/services/productsApi'
+import type { Product } from '@/types/product'
 
 function generateOrderNumber() {
   const timestamp = Date.now().toString().slice(-6)
@@ -64,8 +59,11 @@ function AddEditOrder() {
 
   const loadAvailableProducts = useCallback(async () => {
     try {
-      const data = await getProducts()
-      setAvailableProducts(data)
+      // This dropdown needs the full catalog, not one page of it — 100 is the backend's
+      // max allowed PageSize (ProductQueryValidator), so it stands in for a proper
+      // "get all" endpoint until the catalog outgrows it.
+      const data = await getProducts({ pageSize: 100 })
+      setAvailableProducts(data.items)
     } catch (error) {
       console.error('Error loading products:', error)
       toast.error('Could not load products')
@@ -93,7 +91,7 @@ function AddEditOrder() {
 
       setOrderNumber(data.orderNumber)
       setOrderDate(formatDateForInput(data.orderDate))
-      const mappedProducts = data.orderProducts.map((p) => ({
+      const mappedProducts = (data.orderProducts ?? []).map((p) => ({
         productId: p.productId,
         quantity: p.quantity,
         unitPrice: Number(p.unitPrice),
@@ -273,6 +271,7 @@ function AddEditOrder() {
                     <TableCell>
                       <div className="flex justify-center gap-1">
                         <Button
+                          type="button"
                           size="icon-sm"
                           variant="ghost"
                           title="Edit quantity"
@@ -283,6 +282,7 @@ function AddEditOrder() {
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button
+                              type="button"
                               size="icon-sm"
                               variant="ghost"
                               title="Remove"
