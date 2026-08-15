@@ -50,6 +50,7 @@ function AddEditOrder() {
 
   const [orderNumber, setOrderNumber] = useState('')
   const [orderDate, setOrderDate] = useState('')
+  const [orderStatus, setOrderStatus] = useState<number | null>(null)
   const [orderProducts, setOrderProducts] = useState<OrderProductItem[]>([])
 
   const [availableProducts, setAvailableProducts] = useState<Product[]>([])
@@ -91,6 +92,7 @@ function AddEditOrder() {
 
       setOrderNumber(data.orderNumber)
       setOrderDate(formatDateForInput(data.orderDate))
+      setOrderStatus(data.status)
       const mappedProducts = (data.orderProducts ?? []).map((p) => ({
         productId: p.productId,
         quantity: p.quantity,
@@ -123,6 +125,8 @@ function AddEditOrder() {
     }
   }, [isEditMode, loadOrderData])
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  const isCompleted = isEditMode && orderStatus === 2
 
   const calculateTotalProducts = () => orderProducts.reduce((sum, p) => sum + p.quantity, 0)
   const calculateFinalPrice = () => orderProducts.reduce((sum, p) => sum + p.totalPrice, 0)
@@ -206,6 +210,12 @@ function AddEditOrder() {
     <div className="mx-auto max-w-5xl">
       <h2 className="mb-5">{isEditMode ? 'Edit Order' : 'Add Order'}</h2>
 
+      {isCompleted && (
+        <div className="mb-5 border border-border bg-success px-4 py-2.5 text-sm text-success-foreground">
+          This order is completed and can no longer be modified.
+        </div>
+      )}
+
       <form onSubmit={handleSubmit}>
         <div className="mb-6 grid grid-cols-2 border border-border bg-card sm:grid-cols-4">
           <div className="border-r border-border p-4">
@@ -233,7 +243,7 @@ function AddEditOrder() {
 
         <div className="mb-4 flex items-baseline justify-between">
           <h4>Products in this order</h4>
-          <Button type="button" variant="outline" onClick={handleAddProduct}>
+          <Button type="button" variant="outline" onClick={handleAddProduct} disabled={isCompleted}>
             <Plus className="size-4" />
             Add Product
           </Button>
@@ -275,6 +285,7 @@ function AddEditOrder() {
                           size="icon-sm"
                           variant="ghost"
                           title="Edit quantity"
+                          disabled={isCompleted}
                           onClick={() => handleEditProduct(index)}
                         >
                           <Pencil className="size-4" />
@@ -287,6 +298,7 @@ function AddEditOrder() {
                               variant="ghost"
                               title="Remove"
                               className="text-destructive hover:text-destructive"
+                              disabled={isCompleted}
                             >
                               <Trash2 className="size-4" />
                             </Button>
@@ -319,7 +331,7 @@ function AddEditOrder() {
           <Button type="button" variant="outline" onClick={() => navigate('/my-orders')}>
             Cancel
           </Button>
-          <Button type="submit" disabled={loading}>
+          <Button type="submit" disabled={loading || isCompleted}>
             {loading ? 'Saving...' : isEditMode ? 'Update Order' : 'Create Order'}
           </Button>
         </div>

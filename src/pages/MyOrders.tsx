@@ -172,6 +172,7 @@ function MyOrders() {
             ) : (
               orders.map((order) => {
                 const statusInfo = getStatusInfo(order.status)
+                const isCompleted = order.status === 2
                 return (
                   <TableRow key={order.id}>
                     <TableCell className="text-muted-foreground">{order.id}</TableCell>
@@ -193,7 +194,8 @@ function MyOrders() {
                         <Button
                           size="icon-sm"
                           variant="ghost"
-                          title="Edit"
+                          title={isCompleted ? 'Completed orders cannot be edited' : 'Edit'}
+                          disabled={isCompleted}
                           onClick={() => navigate(`/add-order/${order.id}`)}
                         >
                           <Pencil className="size-4" />
@@ -202,7 +204,10 @@ function MyOrders() {
                         <Button
                           size="icon-sm"
                           variant="ghost"
-                          title="Change status"
+                          title={
+                            isCompleted ? 'Completed orders cannot change status' : 'Change status'
+                          }
+                          disabled={isCompleted}
                           onClick={() => openStatusDialog(order)}
                         >
                           <RefreshCcw className="size-4" />
@@ -213,8 +218,9 @@ function MyOrders() {
                             <Button
                               size="icon-sm"
                               variant="ghost"
-                              title="Delete"
+                              title={isCompleted ? 'Completed orders cannot be deleted' : 'Delete'}
                               className="text-destructive hover:text-destructive"
+                              disabled={isCompleted}
                             >
                               <Trash2 className="size-4" />
                             </Button>
