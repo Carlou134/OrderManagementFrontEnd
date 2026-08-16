@@ -1,36 +1,8 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  ChevronLeft,
-  ChevronRight,
-  Inbox,
-  Loader2,
-  Pencil,
-  Plus,
-  RefreshCcw,
-  Trash2,
-} from 'lucide-react'
+import { Inbox, Loader2, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
@@ -46,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import PaginationFooter from '@/components/PaginationFooter'
+import OrderTableRow from '@/components/orders/OrderTableRow'
 import { useOrders, useDeleteOrder, useChangeOrderStatus } from '@/hooks/useOrders'
 import type { Order } from '@/types/order'
 
@@ -54,35 +28,6 @@ const STATUS_OPTIONS = [
   { value: '1', label: 'In Progress' },
   { value: '2', label: 'Completed' },
 ]
-
-function getStatusInfo(status: number) {
-  switch (status) {
-    case 0:
-      return { text: 'Pending', className: 'bg-[#f8f4f4] text-[#444141]', dot: '#7d7979' }
-    case 1:
-      return { text: 'In Progress', className: 'bg-[#fff2ef] text-[#7c1405]', dot: '#ae1800' }
-    case 2:
-      return { text: 'Completed', className: 'bg-success text-success-foreground', dot: '#2f7d47' }
-    default:
-      return { text: 'Unknown', className: 'bg-muted text-muted-foreground', dot: '#9b9797' }
-  }
-}
-
-function formatDate(dateString: string) {
-  if (!dateString) return 'N/A'
-  const date = new Date(dateString)
-  if (isNaN(date.getTime())) return 'Invalid date'
-
-  return date.toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-}
-
-function formatPrice(price: number) {
-  return `$${price.toFixed(2)}`
-}
 
 function MyOrders() {
   const navigate = useNavigate()
@@ -98,10 +43,17 @@ function MyOrders() {
   const deleteMutation = useDeleteOrder()
   const statusMutation = useChangeOrderStatus()
 
-  const openStatusDialog = (order: Order) => {
+  const handleEdit = useCallback(
+    (order: Order) => navigate(`/add-order/${order.id}`),
+    [navigate]
+  )
+
+  const handleChangeStatus = useCallback((order: Order) => {
     setStatusTarget(order)
     setNewStatus(String(order.status))
-  }
+  }, [])
+
+  const handleDelete = useCallback((id: number) => deleteMutation.mutate(id), [deleteMutation])
 
   const handleConfirmStatusChange = () => {
     if (!statusTarget) return
@@ -170,109 +122,27 @@ function MyOrders() {
                 </TableCell>
               </TableRow>
             ) : (
-              orders.map((order) => {
-                const statusInfo = getStatusInfo(order.status)
-                const isCompleted = order.status === 2
-                return (
-                  <TableRow key={order.id}>
-                    <TableCell className="text-muted-foreground">{order.id}</TableCell>
-                    <TableCell className="font-semibold">{order.orderNumber}</TableCell>
-                    <TableCell>{formatDate(order.orderDate)}</TableCell>
-                    <TableCell className="text-center">{order.numberProducts}</TableCell>
-                    <TableCell className="font-semibold">{formatPrice(order.finalPrice)}</TableCell>
-                    <TableCell className="text-center">
-                      <Badge className={statusInfo.className}>
-                        <span
-                          className="size-1.5 rounded-full"
-                          style={{ backgroundColor: statusInfo.dot }}
-                        />
-                        {statusInfo.text}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-center gap-1">
-                        <Button
-                          size="icon-sm"
-                          variant="ghost"
-                          title={isCompleted ? 'Completed orders cannot be edited' : 'Edit'}
-                          disabled={isCompleted}
-                          onClick={() => navigate(`/add-order/${order.id}`)}
-                        >
-                          <Pencil className="size-4" />
-                        </Button>
-
-                        <Button
-                          size="icon-sm"
-                          variant="ghost"
-                          title={
-                            isCompleted ? 'Completed orders cannot change status' : 'Change status'
-                          }
-                          disabled={isCompleted}
-                          onClick={() => openStatusDialog(order)}
-                        >
-                          <RefreshCcw className="size-4" />
-                        </Button>
-
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              size="icon-sm"
-                              variant="ghost"
-                              title={isCompleted ? 'Completed orders cannot be deleted' : 'Delete'}
-                              className="text-destructive hover:text-destructive"
-                              disabled={isCompleted}
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will delete order {order.orderNumber}. This action cannot be
-                                undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deleteMutation.mutate(order.id)}>
-                                Yes, delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )
-              })
+              orders.map((order) => (
+                <OrderTableRow
+                  key={order.id}
+                  order={order}
+                  onEdit={handleEdit}
+                  onChangeStatus={handleChangeStatus}
+                  onDelete={handleDelete}
+                />
+              ))
             )}
           </TableBody>
         </Table>
 
-        <div className="flex items-center justify-between border-t border-border px-3 py-2">
-          <span className="text-xs text-muted-foreground">
-            Page {data?.page ?? page} of {totalPages} · {data?.totalCount ?? 0} orders
-          </span>
-          <div className="flex gap-1">
-            <Button
-              size="icon-sm"
-              variant="outline"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <Button
-              size="icon-sm"
-              variant="outline"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
-        </div>
+        <PaginationFooter
+          page={data?.page ?? page}
+          totalPages={totalPages}
+          totalCount={data?.totalCount ?? 0}
+          itemLabel="orders"
+          onPrev={() => setPage((p) => Math.max(1, p - 1))}
+          onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+        />
       </div>
 
       <Dialog open={statusTarget !== null} onOpenChange={(open) => !open && setStatusTarget(null)}>

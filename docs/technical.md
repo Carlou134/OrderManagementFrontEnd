@@ -40,9 +40,18 @@ pnpm dev
 ```
 src/
 ├── components/
-│   ├── ui/              shadcn/ui primitives (Button, Dialog, Table, ...) — generated, not hand-written
+│   ├── ui/                  shadcn/ui primitives (Button, Dialog, Table, ...) — generated, not hand-written
+│   ├── orders/
+│   │   ├── OrderStatusBadge.tsx   status → color/dot mapping, memoized
+│   │   ├── OrderTableRow.tsx      one row of the orders table, memoized
+│   │   └── OrderProductRow.tsx    one row of the order-lines table, memoized
+│   ├── products/
+│   │   ├── ProductTableRow.tsx    one row of the products table, memoized
+│   │   └── ProductFormDialog.tsx  shared create/edit product dialog (RHF + Zod)
+│   ├── ConfirmDeleteDialog.tsx    generic "are you sure?" AlertDialog wrapper
+│   ├── PaginationFooter.tsx       Prev/Next + "Page X of Y · N items", memoized
 │   ├── Navbar.tsx
-│   └── ProductModal.tsx     add/edit a product line within an order
+│   └── ProductModal.tsx     add/edit a product line within an order (RHF + Zod)
 ├── hooks/
 │   ├── useOrders.ts         useOrders, useDeleteOrder, useChangeOrderStatus
 │   └── useProducts.ts       useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct
@@ -51,6 +60,10 @@ src/
 │   ├── MyOrders.tsx         order list + pagination + status/delete
 │   ├── Products.tsx         product list + pagination + CRUD
 │   └── AddEditOrder.tsx     create/edit order, shared by both routes
+├── schemas/
+│   ├── order.ts              orderFormSchema, orderProductLineSchema — AddEditOrder's form
+│   ├── orderProduct.ts       orderProductFormSchema — ProductModal's form
+│   └── product.ts            productFormSchema — ProductFormDialog's form
 ├── services/
 │   ├── ordersApi.ts         Axios calls for orders — no business logic, no types
 │   └── productsApi.ts       Axios calls for products — no business logic, no types
@@ -63,6 +76,8 @@ src/
 ├── App.tsx                   routes + QueryClientProvider + Toaster
 └── main.tsx
 ```
+
+**Why `schemas/` is separate from `types/`:** `types/*.ts` mirrors the backend's DTO shapes — what the API actually returns/accepts. `schemas/*.ts` holds Zod schemas describing what a *form* considers valid input, which is a different concern (e.g. `unitPrice` must be `> 0`, a rule the backend enforces too but that the type alone doesn't express). Each schema exports its Zod object plus an inferred `type XFormValues = z.infer<typeof schema>` for the corresponding `useForm<XFormValues>()`.
 
 **Why services and types are split apart:** `services/*Api.ts` files only know how to talk HTTP (Axios calls, error logging). They import their types from `types/*.ts` but don't own or re-export them. Anything importing a domain type (`Order`, `Product`, `PagedResult<T>`) imports it directly from `types/`, never through a service file. This keeps the HTTP layer swappable without touching type consumers, and avoids a service file becoming a dumping ground for both HTTP calls and domain modeling.
 
@@ -108,6 +123,20 @@ List endpoints return `PagedResult<T>` (`items`, `page`, `pageSize`, `totalCount
 
 `ProductModal` pre-fills its fields from an `editingProduct` prop via a `useEffect` watching `[open, editingProduct]` — not inside the Dialog's `onOpenChange`, because Radix's `onOpenChange` only fires on Radix-driven open/close, not when a parent externally flips `open` to `true`.
 
+### Forms: React Hook Form + Zod
+
+Every form (`ProductFormDialog`, `ProductModal`, `AddEditOrder`) uses `useForm` with `zodResolver`, never manual `useState` + hand-rolled `if` checks. The order form additionally uses `useFieldArray` for `orderProducts`, so adding/editing/removing a line item is `append`/`update`/`remove` instead of manual array spreading.
+
+Two things that tripped this up and are worth knowing before touching these forms again:
+- **`z.coerce.number()` breaks `useForm`'s generic inference.** Zod v4 gives a coerced field a different "input" type (`unknown`) than "output" type (`number`), which `useForm<T>` can't reconcile in a single type parameter. Fixed by using plain `z.number()` in the schema and `register('field', { valueAsNumber: true })` on the input instead, so the field's input and output types stay identical.
+- **Every `<form>` needs `noValidate`.** Native HTML5 attributes like `min="1"` fire the browser's own validation popup before RHF's `handleSubmit` even runs, which hides the styled Zod error message behind a native tooltip. `noValidate` hands 100% of validation to RHF + Zod.
+
+Any field driven by a non-native control (shadcn's `Select`, in `ProductModal`) is wired through `Controller`, not `register`, since it has no real `onChange`/`value` DOM props to register against. Reading a field's live value for display (e.g. the running total in `ProductModal`, or `orderNumber`/`orderProducts` in `AddEditOrder`) uses `useWatch({ control, name })`, not `form.watch()` called directly in the render body — the latter is flagged by `eslint-plugin-react-hooks` as unsafe to memoize and isn't RHF's recommended subscription API for that case.
+
+### Component splitting + `React.memo`
+
+Table rows (`OrderTableRow`, `OrderProductRow`, `ProductTableRow`), the status badge, and the pagination footer are their own memoized components, each receiving primitives/callbacks as props rather than reaching into page-level state. For `memo` to actually prevent re-renders, the callbacks passed down (`onEdit`, `onDelete`, ...) are wrapped in `useCallback` at the page level — passing a fresh arrow function on every render would defeat the memoization immediately. `ConfirmDeleteDialog` is deliberately **not** memoized: its `trigger` prop is a JSX element created fresh on every parent render regardless, so memoizing the dialog itself would add complexity without preventing anything.
+
 ### `type="button"` discipline inside `<form>`
 
 shadcn's `Button` component does not set a default `type`, so any `<Button>` rendered inside a `<form>` that isn't the actual submit action must get an explicit `type="button"` — otherwise it defaults to the native `type="submit"` and triggers the form's `onSubmit` on click. This bit `AddEditOrder.tsx` once (the per-row "Edit quantity" button silently submitted and created the order). Buttons rendered through a Radix `Portal` (`AlertDialogContent`, `DialogContent`) are exempt — they're not DOM descendants of the `<form>` regardless of where they sit in the JSX/React tree.
@@ -129,11 +158,12 @@ shadcn's `Button` component does not set a default `type`, so any `<Button>` ren
 | **React Query instead of `useState` + `useEffect` for server state** | Removes manual loading/error state juggling and duplicate fetch-on-mount logic, and gives pagination `keepPreviousData` for free. |
 | **Sonner instead of SweetAlert2** | SweetAlert2 rendered outside React's tree and didn't fit the shadcn/Radix dialog patterns already in use; Sonner is a normal React component (`<Toaster />`) that composes with the rest of the UI. |
 | **`react-refresh/only-export-components` disabled under `src/components/ui/**`** | shadcn's generated files (e.g. `button.tsx`) intentionally export both a component and a helper (`buttonVariants`), which the rule otherwise flags as a Fast Refresh hazard. Scoped to generated files only, not the whole project. |
+| **`@typescript-eslint/no-unused-vars` instead of base `no-unused-vars`** | `typescript-eslint/recommended` already turns the base rule off in favor of the TS-aware one, which correctly ignores parameter names in type-only contexts (e.g. `onEdit: (order: Order) => void` in an interface). An earlier config re-enabled the base rule project-wide, which meant every callback-prop interface needed a manual `eslint-disable` comment for its parameter name. Fixed once in `eslint.config.js` instead of patching each file. |
+| **React Hook Form + Zod for every form** | Manual `useState` + inline `if` validation (the original pattern) scales badly once a form has more than one or two fields, and gives no consistent way to show field-level errors. RHF + `zodResolver` centralizes validation rules in one schema per form and keeps error display consistent across the app. |
 
 ---
 
 ## Known gaps
 
 - No automated tests yet (Vitest + React Testing Library) — deferred until the module restructuring settled. A `docs/test-cases.md` will be added once tests exist.
-- No client-side form validation library (Zod / React Hook Form) — forms validate manually inline.
 - No optimistic updates — mutations wait for the server response before invalidating queries.

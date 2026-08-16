@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import { Controller, useForm, useWatch } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { Product } from '@/types/product'
+import { orderProductFormSchema, type OrderProductFormValues } from '@/schemas/orderProduct'
 
 export interface OrderProductItem {
   productId: number
@@ -31,51 +34,37 @@ export interface OrderProductItem {
 interface ProductModalProps {
   open: boolean
   onClose: () => void
-  // eslint-disable-next-line no-unused-vars -- interface parameter name, kept for readability
   onSave: (product: OrderProductItem) => void
   products: Product[]
   editingProduct: OrderProductItem | null
 }
 
 function ProductModal({ open, onClose, onSave, products, editingProduct }: ProductModalProps) {
-  const [selectedProductId, setSelectedProductId] = useState('')
-  const [quantity, setQuantity] = useState('1')
+  const form = useForm<OrderProductFormValues>({
+    resolver: zodResolver(orderProductFormSchema),
+    defaultValues: { productId: 0, quantity: 1 },
+  })
 
-  const selectedProduct = products.find((p) => p.id === Number(selectedProductId))
-
-  // Syncs local form state to the editingProduct prop whenever the dialog opens.
-  /* eslint-disable react-hooks/set-state-in-effect */
+  // Syncs the form to the editingProduct prop whenever the dialog opens.
   useEffect(() => {
     if (!open) return
     if (editingProduct) {
-      setSelectedProductId(String(editingProduct.productId))
-      setQuantity(String(editingProduct.quantity))
+      form.reset({ productId: editingProduct.productId, quantity: editingProduct.quantity })
     } else {
-      setSelectedProductId('')
-      setQuantity('1')
+      form.reset({ productId: 0, quantity: 1 })
     }
-  }, [open, editingProduct])
-  /* eslint-enable react-hooks/set-state-in-effect */
+  }, [open, editingProduct, form])
+
+  const selectedProductId = useWatch({ control: form.control, name: 'productId' })
+  const quantity = useWatch({ control: form.control, name: 'quantity' })
+  const selectedProduct = products.find((p) => p.id === selectedProductId)
 
   const handleOpenChange = (next: boolean) => {
     if (!next) onClose()
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!selectedProductId) {
-      toast.error('Select a product')
-      return
-    }
-
-    const qty = parseInt(quantity, 10)
-    if (!qty || qty <= 0) {
-      toast.error('Quantity must be greater than 0')
-      return
-    }
-
-    const product = products.find((p) => p.id === Number(selectedProductId))
+  const onSubmit = (values: OrderProductFormValues) => {
+    const product = products.find((p) => p.id === values.productId)
     if (!product) {
       toast.error('Product not found')
       return
@@ -85,18 +74,16 @@ function ProductModal({ open, onClose, onSave, products, editingProduct }: Produ
       productId: product.id,
       productName: product.name,
       unitPrice: product.unitPrice,
-      quantity: qty,
-      totalPrice: product.unitPrice * qty,
+      quantity: values.quantity,
+      totalPrice: product.unitPrice * values.quantity,
     })
-    setSelectedProductId('')
-    setQuantity('1')
     onClose()
   }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
-        <form onSubmit={handleSubmit}>
+        <form noValidate onSubmit={form.handleSubmit(onSubmit)}>
           <DialogHeader>
             <DialogTitle>{editingProduct ? 'Edit Product' : 'Add Product to Order'}</DialogTitle>
             <DialogDescription>
@@ -109,22 +96,31 @@ function ProductModal({ open, onClose, onSave, products, editingProduct }: Produ
           <div className="grid gap-3 py-2">
             <div className="grid gap-1.5">
               <Label htmlFor="product-select">Product *</Label>
-              <Select
-                value={selectedProductId}
-                onValueChange={setSelectedProductId}
-                disabled={Boolean(editingProduct)}
-              >
-                <SelectTrigger id="product-select" className="w-full">
-                  <SelectValue placeholder="Select a product" />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map((product) => (
-                    <SelectItem key={product.id} value={String(product.id)}>
-                      {product.name} - ${product.unitPrice.toFixed(2)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Controller
+                control={form.control}
+                name="productId"
+                render={({ field }) => (
+                  <Select
+                    value={field.value ? String(field.value) : ''}
+                    onValueChange={(value) => field.onChange(Number(value))}
+                    disabled={Boolean(editingProduct)}
+                  >
+                    <SelectTrigger id="product-select" className="w-full">
+                      <SelectValue placeholder="Select a product" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {products.map((product) => (
+                        <SelectItem key={product.id} value={String(product.id)}>
+                          {product.name} - ${product.unitPrice.toFixed(2)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {form.formState.errors.productId && (
+                <p className="text-xs text-destructive">{form.formState.errors.productId.message}</p>
+              )}
             </div>
 
             <div className="grid gap-1.5">
@@ -133,16 +129,17 @@ function ProductModal({ open, onClose, onSave, products, editingProduct }: Produ
                 id="product-qty"
                 type="number"
                 min="1"
-                required
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
+                {...form.register('quantity', { valueAsNumber: true })}
               />
+              {form.formState.errors.quantity && (
+                <p className="text-xs text-destructive">{form.formState.errors.quantity.message}</p>
+              )}
             </div>
 
             {selectedProduct && (
               <div className="border border-border bg-secondary px-3 py-2 text-sm">
                 <span className="font-semibold">Total: </span>$
-                {(selectedProduct.unitPrice * Number(quantity || 0)).toFixed(2)}
+                {(selectedProduct.unitPrice * (quantity || 0)).toFixed(2)}
               </div>
             )}
           </div>
