@@ -1,39 +1,19 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useFieldArray, useForm, useWatch } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Loader2, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import OrderProductRow from '@/components/orders/OrderProductRow'
 import ProductModal, { type OrderProductItem } from '@/components/ProductModal'
-import {
-  getProducts,
-  listOrderById,
-  createOrder,
-  updateOrder,
-  listProductById,
-  type Product,
-} from '@/services/api'
+import { listOrderById, createOrder, updateOrder } from '@/services/ordersApi'
+import { getProducts, listProductById } from '@/services/productsApi'
+import type { Product } from '@/types/product'
+import { orderFormSchema, type OrderFormValues } from '@/schemas/order'
 
 function generateOrderNumber() {
   const timestamp = Date.now().toString().slice(-6)
@@ -53,19 +33,31 @@ function AddEditOrder() {
   const navigate = useNavigate()
   const isEditMode = Boolean(id)
 
-  const [orderNumber, setOrderNumber] = useState('')
-  const [orderDate, setOrderDate] = useState('')
-  const [orderProducts, setOrderProducts] = useState<OrderProductItem[]>([])
-
+  const [orderStatus, setOrderStatus] = useState<number | null>(null)
   const [availableProducts, setAvailableProducts] = useState<Product[]>([])
   const [showModal, setShowModal] = useState(false)
   const [editingProductIndex, setEditingProductIndex] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
 
+  const form = useForm<OrderFormValues>({
+    resolver: zodResolver(orderFormSchema),
+    defaultValues: { orderNumber: '', orderDate: '', orderProducts: [] },
+  })
+  const { fields, append, update, remove } = useFieldArray({
+    control: form.control,
+    name: 'orderProducts',
+  })
+  const orderNumber = useWatch({ control: form.control, name: 'orderNumber' })
+  const orderDate = useWatch({ control: form.control, name: 'orderDate' })
+  const orderProducts = useWatch({ control: form.control, name: 'orderProducts' })
+
   const loadAvailableProducts = useCallback(async () => {
     try {
-      const data = await getProducts()
-      setAvailableProducts(data)
+      // This dropdown needs the full catalog, not one page of it — 100 is the backend's
+      // max allowed PageSize (ProductQueryValidator), so it stands in for a proper
+      // "get all" endpoint until the catalog outgrows it.
+      const data = await getProducts({ pageSize: 100 })
+      setAvailableProducts(data.items)
     } catch (error) {
       console.error('Error loading products:', error)
       toast.error('Could not load products')
@@ -80,9 +72,9 @@ function AddEditOrder() {
           return { ...p, productName: product.name }
         })
       )
-      setOrderProducts(enriched)
+      form.setValue('orderProducts', enriched)
     },
-    []
+    [form]
   )
 
   const loadOrderData = useCallback(async () => {
@@ -91,9 +83,10 @@ function AddEditOrder() {
       setLoading(true)
       const data = await listOrderById(id)
 
-      setOrderNumber(data.orderNumber)
-      setOrderDate(formatDateForInput(data.orderDate))
-      const mappedProducts = data.orderProducts.map((p) => ({
+      form.setValue('orderNumber', data.orderNumber)
+      form.setValue('orderDate', formatDateForInput(data.orderDate))
+      setOrderStatus(data.status)
+      const mappedProducts = (data.orderProducts ?? []).map((p) => ({
         productId: p.productId,
         quantity: p.quantity,
         unitPrice: Number(p.unitPrice),
@@ -108,7 +101,7 @@ function AddEditOrder() {
     } finally {
       setLoading(false)
     }
-  }, [id, navigate, enrichProductsWithName])
+  }, [id, navigate, enrichProductsWithName, form])
 
   // Fetches the product catalog once on mount and, in edit mode, the existing order.
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -120,11 +113,13 @@ function AddEditOrder() {
     if (isEditMode) {
       loadOrderData()
     } else {
-      setOrderNumber(generateOrderNumber())
-      setOrderDate(getCurrentDate())
+      form.setValue('orderNumber', generateOrderNumber())
+      form.setValue('orderDate', getCurrentDate())
     }
-  }, [isEditMode, loadOrderData])
+  }, [isEditMode, loadOrderData, form])
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  const isCompleted = isEditMode && orderStatus === 2
 
   const calculateTotalProducts = () => orderProducts.reduce((sum, p) => sum + p.quantity, 0)
   const calculateFinalPrice = () => orderProducts.reduce((sum, p) => sum + p.totalPrice, 0)
@@ -141,9 +136,7 @@ function AddEditOrder() {
 
   const handleSaveProduct = (product: OrderProductItem) => {
     if (editingProductIndex !== null) {
-      const updated = [...orderProducts]
-      updated[editingProductIndex] = product
-      setOrderProducts(updated)
+      update(editingProductIndex, product)
       return
     }
 
@@ -153,27 +146,20 @@ function AddEditOrder() {
       return
     }
 
-    setOrderProducts([...orderProducts, product])
+    append(product)
   }
 
   const handleRemoveProduct = (index: number) => {
-    setOrderProducts(orderProducts.filter((_, i) => i !== index))
+    remove(index)
   }
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-
-    if (orderProducts.length === 0) {
-      toast.error('You must add at least one product')
-      return
-    }
-
+  const onSubmit = form.handleSubmit(async (values) => {
     try {
       setLoading(true)
 
       const orderData = {
-        OrderNumber: orderNumber,
-        Products: orderProducts.map((p) => ({
+        OrderNumber: values.orderNumber,
+        Products: values.orderProducts.map((p) => ({
           ProductId: p.productId,
           Quantity: p.quantity,
         })),
@@ -194,7 +180,7 @@ function AddEditOrder() {
     } finally {
       setLoading(false)
     }
-  }
+  })
 
   if (loading && isEditMode) {
     return (
@@ -208,7 +194,13 @@ function AddEditOrder() {
     <div className="mx-auto max-w-5xl">
       <h2 className="mb-5">{isEditMode ? 'Edit Order' : 'Add Order'}</h2>
 
-      <form onSubmit={handleSubmit}>
+      {isCompleted && (
+        <div className="mb-5 border border-border bg-success px-4 py-2.5 text-sm text-success-foreground">
+          This order is completed and can no longer be modified.
+        </div>
+      )}
+
+      <form noValidate onSubmit={onSubmit}>
         <div className="mb-6 grid grid-cols-2 border border-border bg-card sm:grid-cols-4">
           <div className="border-r border-border p-4">
             <Label>Order #</Label>
@@ -233,13 +225,19 @@ function AddEditOrder() {
           </div>
         </div>
 
-        <div className="mb-4 flex items-baseline justify-between">
+        <div className="mb-2 flex items-baseline justify-between">
           <h4>Products in this order</h4>
-          <Button type="button" variant="outline" onClick={handleAddProduct}>
+          <Button type="button" variant="outline" onClick={handleAddProduct} disabled={isCompleted}>
             <Plus className="size-4" />
             Add Product
           </Button>
         </div>
+
+        {form.formState.errors.orderProducts && (
+          <p className="mb-2 text-sm text-destructive">
+            {form.formState.errors.orderProducts.message}
+          </p>
+        )}
 
         <div className="mb-6 border border-border bg-card">
           <Table>
@@ -254,61 +252,22 @@ function AddEditOrder() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orderProducts.length === 0 ? (
+              {fields.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                     No products in this order yet. Click &quot;Add Product&quot; to add one.
                   </TableCell>
                 </TableRow>
               ) : (
-                orderProducts.map((product, index) => (
-                  <TableRow key={`${product.productId}-${index}`}>
-                    <TableCell className="text-muted-foreground">{product.productId}</TableCell>
-                    <TableCell className="font-semibold">{product.productName}</TableCell>
-                    <TableCell>${product.unitPrice.toFixed(2)}</TableCell>
-                    <TableCell>{product.quantity}</TableCell>
-                    <TableCell className="font-semibold">
-                      ${product.totalPrice.toFixed(2)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-center gap-1">
-                        <Button
-                          size="icon-sm"
-                          variant="ghost"
-                          title="Edit quantity"
-                          onClick={() => handleEditProduct(index)}
-                        >
-                          <Pencil className="size-4" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              size="icon-sm"
-                              variant="ghost"
-                              title="Remove"
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will remove {product.productName} from the order.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleRemoveProduct(index)}>
-                                Yes, remove
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                fields.map((field, index) => (
+                  <OrderProductRow
+                    key={field.id}
+                    product={field}
+                    index={index}
+                    disabled={isCompleted}
+                    onEdit={handleEditProduct}
+                    onRemove={handleRemoveProduct}
+                  />
                 ))
               )}
             </TableBody>
@@ -319,7 +278,7 @@ function AddEditOrder() {
           <Button type="button" variant="outline" onClick={() => navigate('/my-orders')}>
             Cancel
           </Button>
-          <Button type="submit" disabled={loading}>
+          <Button type="submit" disabled={loading || isCompleted}>
             {loading ? 'Saving...' : isEditMode ? 'Update Order' : 'Create Order'}
           </Button>
         </div>

@@ -1,99 +1,43 @@
-import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
-import { Loader2, Package, Pencil, Trash2 } from 'lucide-react'
+import { useCallback, useState } from 'react'
+import { Loader2, Package, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import PaginationFooter from '@/components/PaginationFooter'
+import ProductTableRow from '@/components/products/ProductTableRow'
+import ProductFormDialog from '@/components/products/ProductFormDialog'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { getProducts, deleteProduct, updateProduct, type Product } from '@/services/api'
-
-function formatPrice(price: number) {
-  return `$${price.toFixed(2)}`
-}
+  useProducts,
+  useCreateProduct,
+  useUpdateProduct,
+  useDeleteProduct,
+} from '@/hooks/useProducts'
+import type { Product } from '@/types/product'
+import type { ProductFormValues } from '@/schemas/product'
 
 function Products() {
-  const queryClient = useQueryClient()
+  const [page, setPage] = useState(1)
   const [editTarget, setEditTarget] = useState<Product | null>(null)
-  const [editName, setEditName] = useState('')
-  const [editPrice, setEditPrice] = useState('')
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
 
-  const {
-    data: products = [],
-    isLoading,
-    isError,
-    refetch,
-  } = useQuery({
-    queryKey: ['products'],
-    queryFn: getProducts,
-  })
+  const { data, isLoading, isError, refetch } = useProducts({ page })
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteProduct,
-    onSuccess: () => {
-      toast.success('Product deleted successfully')
-      queryClient.invalidateQueries({ queryKey: ['products'] })
-    },
-    onError: (error) => {
-      console.error('Error deleting product:', error)
-      toast.error('Could not delete product')
-    },
-  })
+  const products = data?.items ?? []
+  const totalPages = data?.totalPages ?? 1
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, name, unitPrice }: { id: number; name: string; unitPrice: number }) =>
-      updateProduct(id, { name, unitPrice }),
-    onSuccess: () => {
-      toast.success('Product updated successfully')
-      setEditTarget(null)
-      queryClient.invalidateQueries({ queryKey: ['products'] })
-    },
-    onError: (error) => {
-      console.error('Error updating product:', error)
-      toast.error('Could not update product')
-    },
-  })
+  const deleteMutation = useDeleteProduct()
+  const updateMutation = useUpdateProduct()
+  const createMutation = useCreateProduct()
 
-  const openEditDialog = (product: Product) => {
-    setEditTarget(product)
-    setEditName(product.name)
-    setEditPrice(String(product.unitPrice))
+  const handleEdit = useCallback((product: Product) => setEditTarget(product), [])
+  const handleDelete = useCallback((id: number) => deleteMutation.mutate(id), [deleteMutation])
+
+  const handleCreate = (values: ProductFormValues) => {
+    createMutation.mutate(values, { onSuccess: () => setShowCreateDialog(false) })
   }
 
-  const handleConfirmUpdate = () => {
+  const handleUpdate = (values: ProductFormValues) => {
     if (!editTarget) return
-    const unitPrice = Number(editPrice)
-    if (!editName.trim() || Number.isNaN(unitPrice) || unitPrice <= 0) {
-      toast.error('Check the product name and price')
-      return
-    }
-    updateMutation.mutate({ id: editTarget.id, name: editName.trim(), unitPrice })
+    updateMutation.mutate({ id: editTarget.id, ...values }, { onSuccess: () => setEditTarget(null) })
   }
 
   if (isLoading) {
@@ -122,8 +66,12 @@ function Products() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="mb-5">
+      <div className="mb-5 flex items-baseline justify-between">
         <h2>Products</h2>
+        <Button onClick={() => setShowCreateDialog(true)}>
+          <Plus className="size-4" />
+          New Product
+        </Button>
       </div>
 
       <div className="border border-border bg-card">
@@ -146,92 +94,47 @@ function Products() {
               </TableRow>
             ) : (
               products.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell className="text-muted-foreground">{product.id}</TableCell>
-                  <TableCell className="font-semibold">{product.name}</TableCell>
-                  <TableCell>{formatPrice(product.unitPrice)}</TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex justify-center gap-1">
-                      <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        title="Update"
-                        onClick={() => openEditDialog(product)}
-                      >
-                        <Pencil className="size-4" />
-                      </Button>
-
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            size="icon-sm"
-                            variant="ghost"
-                            title="Delete"
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will delete product {product.name}. This action cannot be
-                              undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => deleteMutation.mutate(product.id)}>
-                              Yes, delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <ProductTableRow
+                  key={product.id}
+                  product={product}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
               ))
             )}
           </TableBody>
         </Table>
+
+        <PaginationFooter
+          page={data?.page ?? page}
+          totalPages={totalPages}
+          totalCount={data?.totalCount ?? 0}
+          itemLabel="products"
+          onPrev={() => setPage((p) => Math.max(1, p - 1))}
+          onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+        />
       </div>
 
-      <Dialog open={editTarget !== null} onOpenChange={(open) => !open && setEditTarget(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Update Product</DialogTitle>
-            <DialogDescription>Edit the product&apos;s name and price.</DialogDescription>
-          </DialogHeader>
+      <ProductFormDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        title="New Product"
+        description="Set the name and price for the new product."
+        submitLabel="Create"
+        isPending={createMutation.isPending}
+        onSubmit={handleCreate}
+      />
 
-          <div className="grid gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="product-name">Name</Label>
-              <Input id="product-name" value={editName} onChange={(e) => setEditName(e.target.value)} />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="product-price">Unit Price</Label>
-              <Input
-                id="product-price"
-                type="number"
-                min="0"
-                step="0.01"
-                value={editPrice}
-                onChange={(e) => setEditPrice(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditTarget(null)}>
-              Cancel
-            </Button>
-            <Button onClick={handleConfirmUpdate} disabled={updateMutation.isPending}>
-              Update
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ProductFormDialog
+        open={editTarget !== null}
+        onOpenChange={(open) => !open && setEditTarget(null)}
+        title="Update Product"
+        description="Edit the product's name and price."
+        submitLabel="Update"
+        isPending={updateMutation.isPending}
+        defaultValues={editTarget ? { name: editTarget.name, unitPrice: editTarget.unitPrice } : undefined}
+        onSubmit={handleUpdate}
+      />
     </div>
   )
 }
