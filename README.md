@@ -61,6 +61,12 @@ cp .env.example .env.development   # point VITE_API_URL to your local backend
 pnpm dev
 ```
 
+Run the test suite (Vitest + React Testing Library, no backend required — the service layer is mocked):
+
+```bash
+pnpm test
+```
+
 ---
 
 ## 🔗 Related links

@@ -32,6 +32,8 @@ pnpm dev
 | `pnpm typecheck` | `tsc -b`, no emit |
 | `pnpm lint` | ESLint over the whole project |
 | `pnpm preview` | Serves the production build locally |
+| `pnpm test` | Runs the Vitest suite once |
+| `pnpm test:watch` | Runs Vitest in watch mode |
 
 ---
 
@@ -141,6 +143,18 @@ Table rows (`OrderTableRow`, `OrderProductRow`, `ProductTableRow`), the status b
 
 shadcn's `Button` component does not set a default `type`, so any `<Button>` rendered inside a `<form>` that isn't the actual submit action must get an explicit `type="button"` — otherwise it defaults to the native `type="submit"` and triggers the form's `onSubmit` on click. This bit `AddEditOrder.tsx` once (the per-row "Edit quantity" button silently submitted and created the order). Buttons rendered through a Radix `Portal` (`AlertDialogContent`, `DialogContent`) are exempt — they're not DOM descendants of the `<form>` regardless of where they sit in the JSX/React tree.
 
+### Testing: Vitest + React Testing Library
+
+Vitest runs in the same Vite config (`vite.config.ts`'s `test` block, `environment: 'jsdom'`), so it shares path aliases and plugins with the app instead of needing a parallel config. `src/test/setup.ts` wires up `@testing-library/jest-dom` matchers and — importantly — calls `cleanup()` in a global `afterEach`.
+
+That `cleanup()` call isn't optional boilerplate: this project doesn't set `test.globals: true` (tests import `describe`/`it`/`expect` explicitly from `'vitest'` rather than relying on injected globals), and React Testing Library's automatic cleanup only self-registers when it detects a global `afterEach`. Without it, one test's rendered DOM (and, worse, an already-open Radix dialog with its overlay) stays mounted into the next test, and `getAllByRole`/`getByText` silently match leftovers instead of the current render — which is exactly what happened while writing `PaginationFooter.test.tsx` and `ConfirmDeleteDialog.test.tsx` before this was wired up.
+
+Test layout mirrors what's being tested, not a parallel `__tests__/` tree — `Button.tsx` and `Button.test.tsx` live side by side. Coverage focuses on:
+- **Schemas** (`src/schemas/*.test.ts`) — pure Zod validation rules, no rendering needed.
+- **Hooks** (`src/hooks/*.test.tsx`) — `renderHook` against a real `QueryClient` (via `src/test/queryClientWrapper.tsx`, retries disabled so failure tests don't hang), with the service layer and `sonner` mocked via `vi.mock`.
+- **Leaf components** (`OrderStatusBadge`, `PaginationFooter`, `ConfirmDeleteDialog`) — rendering and interaction, no mocking needed.
+- **One page-level test** (`Products.test.tsx`) — the service layer mocked, exercising the full loading → list → open dialog → validate → submit → toast flow through real component composition, not just the pieces in isolation.
+
 ### Path alias
 
 `@/*` resolves to `src/*` (`vite.config.ts` + `tsconfig.app.json`), so imports never use relative `../../..` chains across `components/`, `hooks/`, `pages/`, `services/`, `types/`.
@@ -165,5 +179,5 @@ shadcn's `Button` component does not set a default `type`, so any `<Button>` ren
 
 ## Known gaps
 
-- No automated tests yet (Vitest + React Testing Library) — deferred until the module restructuring settled. A `docs/test-cases.md` will be added once tests exist.
 - No optimistic updates — mutations wait for the server response before invalidating queries.
+- Test coverage is intentionally not exhaustive — it covers schemas, hooks, the shared leaf components, and one full page flow (`Products.tsx`) as a representative example, not every page and every branch.

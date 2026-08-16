@@ -18,10 +18,6 @@
       "@/*": ["./src/*"]
     },
 
-    /* Incremental JS -> TS migration */
-    "allowJs": true,
-    "checkJs": false,
-
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,
